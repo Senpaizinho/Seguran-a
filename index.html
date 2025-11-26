@@ -1,0 +1,1189 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Segurança do Trabalho - Situações</title>
+  <style>
+    :root{
+      --bg: #eef6ff;
+      --card: #fff;
+      --primary: #2563eb;
+      --accent: #f59e0b;
+      --text: #0f172a;
+      --radius: 12px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      justify-content:center;
+      padding:18px;
+      min-height:100vh;
+      align-items:flex-start;
+    }
+    .container{
+      width:100%;
+      max-width:1200px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    header{
+      background:var(--card);
+      padding:12px 16px;
+      border-radius:var(--radius);
+      box-shadow:0 6px 24px rgba(16,24,40,0.06);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+    }
+    h1{font-size:18px;margin:0}
+    .controls { display:flex; gap:10px; align-items:center; }
+    .btn{
+      background:var(--primary);
+      color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;
+      font-weight:600; box-shadow: 0 6px 12px rgba(37,99,235,0.12);
+    }
+    .btn.ghost { background: transparent; color: var(--primary); border: 2px solid rgba(37,99,235,0.12); box-shadow:none; }
+    .small { padding:6px 10px; font-size:14px; border-radius:8px; }
+
+    .stage {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: linear-gradient(180deg,#e8f3ff,#dbeefe);
+      min-height:540px;
+    }
+
+    canvas{ display:block; width:100%; height:auto; background:transparent; transform-origin:center top; }
+
+    /* ---------- NEW: Scene animations ---------- */
+    /* entry animation when a phase opens */
+    #gameCanvas.scene-enter {
+      animation: sceneEnter 420ms cubic-bezier(.22,.9,.25,1) 1;
+    }
+    @keyframes sceneEnter {
+      from {
+        opacity: 0;
+        transform: translateY(18px) scale(.985);
+        filter: blur(4px) saturate(.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0) saturate(1);
+      }
+    }
+
+    /* brief shake animation used when the player fails (feedback) */
+    #gameCanvas.scene-fail {
+      animation: sceneFail 520ms cubic-bezier(.36,.07,.19,.97) 1;
+    }
+    @keyframes sceneFail {
+      0% { transform: translateX(0) rotate(0deg); }
+      10% { transform: translateX(-8px) rotate(-1deg); }
+      25% { transform: translateX(10px) rotate(1deg); }
+      40% { transform: translateX(-6px) rotate(-0.6deg); }
+      55% { transform: translateX(6px) rotate(0.6deg); }
+      70% { transform: translateX(-3px) rotate(-0.3deg); }
+      85% { transform: translateX(2px) rotate(0.15deg); }
+      100% { transform: translateX(0) rotate(0deg); }
+    }
+
+    /* MENU */
+    .menuOverlay{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: rgba(10,20,40,0.12);
+      z-index: 30;
+      pointer-events:auto;
+      padding:20px;
+    }
+    .menuCard{
+      width:100%;
+      max-width:1100px;
+      background:var(--card);
+      border-radius:14px;
+      padding:16px;
+      display:flex;
+      gap:14px;
+      box-shadow:0 18px 40px rgba(2,6,23,0.12);
+    }
+    .menuLeft{ width:42%; display:flex; flex-direction:column; gap:8px; }
+    .menuRight{ width:58%; display:flex; flex-direction:column; gap:8px; }
+    .missionList{
+      background:#f8fafc;
+      border-radius:10px;
+      padding:8px;
+      max-height:420px;
+      overflow:auto;
+      border:1px solid rgba(16,24,40,0.04);
+    }
+    .missionItem{
+      display:flex; gap:10px; align-items:center; padding:10px; border-radius:8px;
+      background: white; border:1px solid rgba(15,23,42,0.04); margin-bottom:8px; cursor:pointer;
+      transition:transform .12s, box-shadow .12s;
+    }
+    .missionItem:hover{ transform:translateY(-4px); box-shadow:0 12px 30px rgba(2,6,23,0.06); }
+    .missionThumb{ width:56px;height:56px;border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
+    .missionTitle{ font-weight:800; font-size:14px; }
+    .missionDesc{ color:#475569; font-size:13px; margin-top:4px; }
+
+    .menuRight .previewCard { padding:12px; border-radius:10px; background:#f1f5f9; height:100%; overflow:auto; }
+    .menuFooter { display:flex; gap:8px; justify-content:flex-end; margin-top:6px; }
+
+    .hidden { display:none !important; }
+
+    /* question/explain area below canvas */
+    .questionCard{
+      background:var(--card);
+      padding:12px;
+      border-radius:12px;
+      box-shadow:0 8px 24px rgba(15,23,42,0.06);
+      display:flex;
+      gap:16px;
+      align-items:flex-start;
+    }
+    .questionLeft{ width:68%; }
+    .questionRight{ width:32%; min-width:220px; }
+    .questionDifficulty{ font-size:12px; padding:4px 8px; border-radius:999px; display:inline-block; margin-left:8px; }
+    .dif-easy{ background:#dcfce7; color:#166534; }
+    .dif-medium{ background:#fff7ed; color:#92400e; }
+    .dif-hard{ background:#fee2e2; color:#991b1b; }
+
+    .options{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+    .optionBtn{
+      border-radius:10px; border:1px solid rgba(15,23,42,0.06); padding:10px; cursor:pointer; background:#fff;
+      text-align:left; font-weight:600;
+      transition: transform .08s ease, box-shadow .12s ease;
+    }
+    .optionBtn:hover{ transform:translateY(-3px); box-shadow:0 12px 30px rgba(2,6,23,0.06); }
+
+    .feedback{
+      margin-top:8px;
+      color:#0f172a;
+      font-size:14px;
+      min-height:44px;
+    }
+
+    .navScene{
+      position:absolute; right:14px; top:14px; z-index:40; display:flex; gap:8px;
+    }
+    .navScene button{ padding:8px 10px; border-radius:10px; border:none; cursor:pointer; font-weight:700; }
+
+    /* result overlay */
+    .resultOverlay{
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:50;
+      background: linear-gradient(90deg, rgba(2,6,23,0.28), rgba(2,6,23,0.18));
+      opacity:0; pointer-events:none; transition:opacity .2s;
+    }
+    .resultOverlay.visible{ opacity:1; pointer-events:auto; }
+    .resultCard{ background:#fff; padding:16px 18px; border-radius:10px; max-width:420px; text-align:center; }
+
+    @media (max-width:900px){
+      .menuCard{ flex-direction:column; }
+      .menuLeft, .menuRight { width:100%; }
+      .questionLeft, .questionRight { width:100%; }
+      .navScene{ left:8px; right:auto; top:auto; bottom:10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Segurança do Trabalho - Situações</h1>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <div style="font-size:13px; color:#334;">Fase atual: <strong id="hudMission">—</strong></div>
+        <div class="controls">
+          <button class="btn" id="openMenuBtn">Fases</button>
+          <button class="btn ghost small" id="resetBtn">Reiniciar cena</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="stage" id="stage">
+      <!-- MENU -->
+      <div id="menuOverlay" class="menuOverlay">
+        <div class="menuCard" role="dialog" aria-label="Menu de fases">
+          <div class="menuLeft">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:800; font-size:18px;">Lista de fases</div>
+              </div>
+              <div style="text-align:right;">
+              </div>
+            </div>
+
+            <div class="missionList" id="missionList">
+              <!-- preenchido por JS (scrollável) -->
+            </div>
+
+            <div style="margin-top:8px; display:flex; gap:8px;">
+              <button class="btn small" id="btnPlaySelected">Jogar fase selecionada</button>
+              <button class="btn ghost small" id="btnPlayFirst">Jogar Fase 1</button>
+            </div>
+
+          </div>
+
+          <div class="menuRight">
+            <div class="previewCard">
+              <div style="font-weight:800;">Detalhes da fase</div>
+              <div id="missionDetail" style="color:#475569; margin-top:8px; line-height:1.4;">
+                Selecione uma fase para ver o enunciado e dificuldade.
+              </div>
+              <div style="margin-top:12px;">
+                <div style="font-weight:700;">Como funciona</div>
+                <div style="color:#6b7280; margin-top:6px; font-size:13px;">
+                  Ao entrar em uma fase o menu fecha e você verá o cenário 2D animado. Escolha a melhor alternativa.
+                  Se errar, aparecerá o feedback e a ação correta. Se acertar, verá a animação da solução.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- CANVAS -->
+      <canvas id="gameCanvas" width="1100" height="520"></canvas>
+
+      <!-- Navegação dentro da cena -->
+      <div class="navScene" id="navScene" style="display:none;">
+        <button id="prevPhase" class="btn ghost small">◀ Anterior</button>
+        <button id="backToMenu" class="btn ghost small">Menu</button>
+        <button id="nextPhase" class="btn ghost small">Próxima ▶</button>
+      </div>
+
+      <!-- Resultado -->
+      <div id="resultOverlay" class="resultOverlay" aria-hidden="true">
+        <div class="resultCard" id="resultCard">
+          <h3 id="resultTitle">Resultado</h3>
+          <p id="resultText">...</p>
+          <div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
+            <button class="btn" id="resultRetry">Repetir</button>
+            <button class="btn ghost" id="resultNext">Próxima</button>
+            <button class="btn ghost" id="resultMenu">Voltar ao menu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AREA DE PERGUNTA / OPCOES -->
+    <div class="questionCard" id="questionCard">
+      <div class="questionLeft">
+        <div style="font-size:15px; font-weight:800;">
+          Situação
+          <span id="questionDifficulty" class="questionDifficulty dif-easy">Fácil</span>
+        </div>
+        <div id="questionText" style="color:#334; margin-top:8px;">Selecione uma fase no menu.</div>
+
+        <div class="options" id="optionsContainer" style="margin-top:8px;"></div>
+
+        <div class="feedback" id="feedbackText">Aguardando escolha...</div>
+      </div>
+
+      <div class="questionRight">
+        <div style="font-weight:800;">Instruções</div>
+        <div style="color:#475569; margin-top:8px; font-size:13px;">
+          - Clique numa fase.<br>
+          - Escolha a alternativa correta.<br>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-weight:700;">Atalhos</div>
+          <div style="color:#475569; font-size:13px; margin-top:6px;">Teclas ← → para mudar fase | R para reiniciar cena</div>
+        </div>
+      </div>
+    </div>
+
+    <footer style="text-align:center; color:#475569; font-size:13px; margin-top:6px;">
+      Criado por: Pedro Henrique e Emanuel Karllyson.
+    </footer>
+  </div>
+
+<script>
+/* ====== Dados das fases (mesmas 15) ====== */
+const phases = [
+  { id:'fase1', title:'Queda da Escada', difficulty:'Fácil', scene:'stairs', situation:'Um trabalhador caiu da escada dentro da empresa.', options:[
+    {t:'Avaliar a cena para garantir que é seguro se aproximar.', c:true, f:'Correto! Garanta segurança antes de aproximar e avaliar a vítima.'},
+    {t:'Levantar o colega rapidamente.', c:false, f:'Não: levantar sem avaliação pode agravar lesões.'},
+    {t:'Dar água e tentar colocar em pé.', c:false, f:'Errado: oferecer água e forçar a pé pode piorar lesões.'}
+  ]},
+  { id:'fase2', title:'Esquecendo o EPI', difficulty:'Fácil', scene:'epi', situation:'Um funcionário vai entrar na área de obra sem capacete.', options:[
+    {t:'Ignorar porque é rápido.', c:false, f:'Errado. Mesmo rápido, a proteção é obrigatória.'},
+    {t:'Emprestar um capacete quebrado.', c:false, f:'Inseguro: EPI danificado não protege.'},
+    {t:'Orientar a colocar o capacete antes de entrar.', c:true, f:'Perfeito! Exija o uso correto do EPI.'}
+  ]},
+  { id:'fase3', title:'Corte Simples', difficulty:'Fácil', scene:'cut', situation:'Um trabalhador corta levemente a mão durante a atividade.', options:[
+    {t:'Estancar o sangramento com proteção.', c:true, f:'Certo: use barreira (luvas) e compressão; avaliar risco.'},
+    {t:'Mandar continuar o serviço.', c:false, f:'Inadequado: ferimentos precisam de atenção.'},
+    {t:'Lavar com qualquer produto químico.', c:false, f:'Perigoso: só água e sabão ou orientações de atendimento.'}
+  ]},
+  { id:'fase4', title:'Barulho Alto', difficulty:'Fácil', scene:'noise', situation:'Máquina com ruído muito acima do normal.', options:[
+    {t:'Continuar usando tampões caseiros.', c:false, f:'Errado. Proteção improvisada não é confiável.'},
+    {t:'Gritar e seguir o trabalho.', c:false, f:'Não resolve o risco técnico. A fonte precisa de manutenção.'},
+    {t:'Parar a máquina e comunicar a manutenção.', c:true, f:'Certo! Pare e comunique manutenção.'}
+  ]},
+  { id:'fase5', title:'Respirador Mal Ajustado', difficulty:'Fácil', scene:'respirator', situation:'Um trabalhador usa o respirador de forma errada.', options:[
+    {t:'Tirar para trabalhar mais rápido.', c:false, f:'Errado. Retirar expõe ao risco.'},
+    {t:'Deixar assim mesmo.', c:false, f:'Não: EPI mal ajustado não protege.'},
+    {t:'Orientar e ajustar corretamente o respirador.', c:true, f:'Correto: ajuste garante vedação e proteção.'}
+  ]},
+  { id:'fase6', title:'Produto Químico Derramado', difficulty:'Média', scene:'chemical', situation:'Um frasco de produto químico derramou no chão.', options:[
+    {t:'Limpar com pano comum.', c:false, f:'Errado: pode espalhar o contaminante ou expor quem limpar.'},
+    {t:'Deixar secar sozinho.', c:false, f:'Não: pode liberar vapores ou causar escorregamento.'},
+    {t:'Isolar a área e chamar o responsável.', c:true, f:'Certo: isole e chame responsável/brigada.'}
+  ]},
+  { id:'fase7', title:'Fumaça no Lixo', difficulty:'Média', scene:'fire', situation:'Pequeno foco de incêndio no lixo.', options:[
+    {t:'Usar o extintor adequado, se for seguro.', c:true, f:'Certo: utilize extintor correto e mantenha rota de fuga.'},
+    {t:'Jogar água sem verificar a causa.', c:false, f:'Perigo: água pode agravar incêndio elétrico/químico.'},
+    {t:'Fugir sem avisar ninguém.', c:false, f:'Errado: alerte brigada e evacue se necessário.'}
+  ]},
+  { id:'fase8', title:'Falta de EPC', difficulty:'Média', scene:'height', situation:'Trabalho em altura sem guarda-corpo.', options:[
+    {t:'Interditar até instalar o guarda-corpo.', c:true, f:'Correto: EPCs devem ser instalados para eliminar risco.'},
+    {t:'Continuar pois está quase acabando.', c:false, f:'Errado: “quase” não justifica risco.'},
+    {t:'Só avisar para ter cuidado.', c:false, f:'Insuficiente: é necessário eliminar risco.'}
+  ]},
+  { id:'fase9', title:'Ferramenta Danificada', difficulty:'Média', scene:'tool', situation:'Funcionário tenta usar ferramenta quebrada.', options:[
+    {t:'Retirar de uso e substituir.', c:true, f:'Certo: não use ferramenta danificada.'},
+    {t:'Deixar usar só mais um pouco.', c:false, f:'Perigoso: pode causar acidente.'},
+    {t:'Ajeitar com fita improvisada.', c:false, f:'Improviso pode falhar.'}
+  ]},
+  { id:'fase10', title:'Poeira em Excesso', difficulty:'Média', scene:'dust', situation:'Ambiente com muita poeira em suspensão.', options:[
+    {t:'Trabalhar sem máscara.', c:false, f:'Errado: risco respiratório elevado.'},
+    {t:'Usar respirador e acionar ventilação.', c:true, f:'Perfeito: controle da fonte + proteção pessoal.'},
+    {t:'Jogar água no chão e continuar.', c:false, f:'Não resolve totalmente e pode criar outros riscos.'}
+  ]},
+  { id:'fase11', title:'Choque Elétrico', difficulty:'Difícil', scene:'shock', situation:'Um trabalhador sofreu choque elétrico e caiu.', options:[
+    {t:'Desligar a energia antes de tocar.', c:true, f:'Correto: remova a fonte antes de tentar socorrer.'},
+    {t:'Puxar a pessoa rapidamente.', c:false, f:'Perigoso: você pode ser eletrocutado também.'},
+    {t:'Jogar água para acordar.', c:false, f:'Extremamente arriscado: água conduz eletricidade.'}
+  ]},
+  { id:'fase12', title:'Vazamento de Gás', difficulty:'Difícil', scene:'gas', situation:'Forte cheiro de gás no ambiente.', options:[
+    {t:'Evacuar e acionar emergência.', c:true, f:'Certo: retire pessoas e acione emergência.'},
+    {t:'Ligar a luz para ver melhor.', c:false, f:'Perigoso: pode causar faísca e explosão.'},
+    {t:'Abrir o fogão para confirmar.', c:false, f:'Errado: aumenta risco de ignição.'}
+  ]},
+  { id:'fase13', title:'Risco Biológico', difficulty:'Difícil', scene:'bio', situation:'Contato com sangue em acidente.', options:[
+    {t:'Usar EPI e encaminhar ao atendimento.', c:true, f:'Correto: proteção e avaliação médica são obrigatórias.'},
+    {t:'Limpar só com água.', c:false, f:'Inadequado para risco biológico.'},
+    {t:'Ignorar se for pouco.', c:false, f:'Nunca subestime risco biológico.'}
+  ]},
+  { id:'fase14', title:'Estrutura Instável', difficulty:'Difícil', scene:'structure', situation:'Parede com rachaduras e risco de queda.', options:[
+    {t:'Isolar a área e acionar engenharia.', c:true, f:'Certo: profissionais devem avaliar a estrutura.'},
+    {t:'Continuar afastado da parede.', c:false, f:'Ainda existe risco de colapso.'},
+    {t:'Colocar fita e seguir.', c:false, f:'Sinalizar sem isolar não é suficiente.'}
+  ]},
+  { id:'fase15', title:'Incêndio em Equipamento Elétrico', difficulty:'Difícil', scene:'electricFire', situation:'Equipamento elétrico pegou fogo.', options:[
+    {t:'Usar extintor classe C e cortar energia.', c:true, f:'Excelente: extintor C e corte de energia.'},
+    {t:'Jogar água.', c:false, f:'Perigoso: água e eletricidade não combinam.'},
+    {t:'Sair correndo sem avisar.', c:false, f:'Você deve acionar e alertar os outros.'}
+  ]}
+];
+
+/* ====== Elementos DOM ====== */
+const missionListEl = document.getElementById('missionList');
+const missionDetailEl = document.getElementById('missionDetail');
+const playSelectedBtn = document.getElementById('btnPlaySelected');
+const btnPlayFirst = document.getElementById('btnPlayFirst');
+const menuOverlay = document.getElementById('menuOverlay');
+const openMenuBtn = document.getElementById('openMenuBtn');
+const btnBackToMenu = document.getElementById('backToMenu');
+const prevPhaseBtn = document.getElementById('prevPhase');
+const nextPhaseBtn = document.getElementById('nextPhase');
+const navScene = document.getElementById('navScene');
+
+const questionText = document.getElementById('questionText');
+const questionDifficulty = document.getElementById('questionDifficulty');
+const optionsContainer = document.getElementById('optionsContainer');
+const feedbackText = document.getElementById('feedbackText');
+
+const gameCanvas = document.getElementById('gameCanvas');
+const ctx = gameCanvas.getContext('2d');
+const W = gameCanvas.width, H = gameCanvas.height;
+
+const resultOverlay = document.getElementById('resultOverlay');
+const resultTitle = document.getElementById('resultTitle');
+const resultText = document.getElementById('resultText');
+const resultRetry = document.getElementById('resultRetry');
+const resultNext = document.getElementById('resultNext');
+const resultMenu = document.getElementById('resultMenu');
+
+const resetBtn = document.getElementById('resetBtn');
+
+/* ====== Estado ====== */
+let selectedIndex = 0;          // fase selecionada no menu
+let currentIndex = 0;           // fase atual em exibição
+let inScene = false;
+let animId = null;
+let t = 0;                      // tempo da animação
+let phaseState = {};            // estado específico da fase (progressos, flags)
+let optionLocked = false;       // evita clique repetido
+let hudMission = document.getElementById('hudMission');
+
+/* ====== Construir lista de fases (scrollável) ====== */
+function makeThumbColor(i){
+  const palette = ['#2563eb','#ef4444','#f59e0b','#16a34a','#7c3aed','#0ea5a4'];
+  return palette[i % palette.length];
+}
+function buildMissionList(){
+  missionListEl.innerHTML = '';
+  phases.forEach((p,i) => {
+    const item = document.createElement('div');
+    item.className = 'missionItem';
+    item.tabIndex = 0;
+    item.dataset.index = i;
+    const thumb = document.createElement('div');
+    thumb.className = 'missionThumb';
+    thumb.style.background = makeThumbColor(i);
+    thumb.textContent = i+1;
+    const info = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'missionTitle';
+    title.textContent = p.title;
+    const desc = document.createElement('div');
+    desc.className = 'missionDesc';
+    desc.textContent = p.situation;
+    info.appendChild(title); info.appendChild(desc);
+    item.appendChild(thumb); item.appendChild(info);
+    item.addEventListener('click', () => {
+      selectedIndex = i;
+      openPhaseFromMenu(i);
+    });
+    item.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') { selectedIndex = i; openPhaseFromMenu(i); }
+    });
+    missionListEl.appendChild(item);
+  });
+}
+buildMissionList();
+
+/* ====== Helpers UI ====== */
+function updateMissionDetail(index){
+  const p = phases[index];
+  missionDetailEl.innerHTML = `<strong>${p.title}</strong><br><br><strong>Dificuldade:</strong> ${p.difficulty}<br><strong>Situação:</strong> ${p.situation}`;
+}
+missionListEl.addEventListener('scroll', () => {
+  // nothing extra required but allows user to scroll
+});
+missionListEl.addEventListener('mouseover', (e) => {
+  const item = e.target.closest('.missionItem');
+  if(item) updateMissionDetail(Number(item.dataset.index));
+});
+
+/* ====== Ações de menu ====== */
+function openMenu(){
+  menuOverlay.style.display = 'flex';
+  inScene = false;
+  navScene.style.display = 'none';
+  hudMission.textContent = '—';
+  // ensure canvas classes cleared
+  gameCanvas.classList.remove('scene-enter','scene-fail');
+  if(animId) cancelAnimationFrame(animId);
+}
+openMenuBtn.addEventListener('click', openMenu);
+
+function openPhaseFromMenu(index){
+  // Esconde o menu (as outras fases "somem") e abre a cena
+  menuOverlay.style.display = 'none';
+  startPhase(index);
+}
+
+/* ====== Atalhos dos botões no menu ====== */
+document.getElementById('btnPlaySelected').addEventListener('click', () => {
+  openPhaseFromMenu(selectedIndex || 0);
+});
+btnPlayFirst.addEventListener('click', () => openPhaseFromMenu(0));
+
+/* ====== Navegação dentro da cena ====== */
+btnBackToMenu.addEventListener('click', () => {
+  openMenu();
+});
+prevPhaseBtn.addEventListener('click', () => {
+  if(currentIndex > 0) startPhase(currentIndex - 1);
+});
+nextPhaseBtn.addEventListener('click', () => {
+  if(currentIndex < phases.length - 1) startPhase(currentIndex + 1);
+});
+document.addEventListener('keydown', (e) => {
+  if(inScene){
+    if(e.key === 'ArrowRight') { if(currentIndex < phases.length -1) startPhase(currentIndex+1); }
+    if(e.key === 'ArrowLeft') { if(currentIndex > 0) startPhase(currentIndex-1); }
+    if(e.key.toLowerCase() === 'r') resetPhaseState();
+  }
+});
+
+/* ====== Preparar cena ====== */
+function startPhase(index){
+  currentIndex = index;
+  inScene = true;
+  optionLocked = false;
+  t = 0;
+  phaseState = createPhaseState(index);
+  applyPhaseToUI(index);
+  hudMission.textContent = phases[index].title;
+  navScene.style.display = 'flex';
+
+  // ---------- trigger canvas entry animation ----------
+  gameCanvas.classList.remove('scene-enter');                // remove if exists
+  void gameCanvas.offsetWidth;                               // force reflow to restart animation
+  gameCanvas.classList.add('scene-enter');
+  // auto-remove class after animation end (clean)
+  const onEnterEnd = () => {
+    gameCanvas.classList.remove('scene-enter');
+    gameCanvas.removeEventListener('animationend', onEnterEnd);
+  };
+  gameCanvas.addEventListener('animationend', onEnterEnd);
+
+  // animate: cancel previous loop and start new
+  if(animId) cancelAnimationFrame(animId);
+  loop();
+}
+
+/* cria estado / variáveis por fase para controlar animações */
+function createPhaseState(index){
+  return {
+    solved:false,
+    failed:false,
+    progress:0,     // 0..1 progression of solving animation
+    shake:0,
+    workers: createWorkersForScene(phases[index].scene),
+    misc:{},        // qualquer dado custom por cena
+  };
+}
+
+/* aplica UI - pergunta, opções, dificuldade */
+function applyPhaseToUI(index){
+  const p = phases[index];
+  questionText.textContent = p.situation;
+  questionDifficulty.textContent = p.difficulty;
+  questionDifficulty.className = 'questionDifficulty ' + (p.difficulty === 'Fácil' ? 'dif-easy' : (p.difficulty === 'Média' ? 'dif-medium' : 'dif-hard'));
+  optionsContainer.innerHTML = '';
+  p.options.forEach((opt,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'optionBtn';
+    btn.innerHTML = `<strong>${String.fromCharCode(65+i)})</strong> ${opt.t}`;
+    btn.addEventListener('click', () => selectOption(i));
+    optionsContainer.appendChild(btn);
+  });
+  feedbackText.textContent = 'Escolha a melhor alternativa.';
+}
+
+/* bloquear/desbloquear opções */
+function lockOptions(){
+  optionLocked = true;
+  [...optionsContainer.children].forEach(b => b.disabled = true);
+}
+function unlockOptions(){
+  optionLocked = false;
+  [...optionsContainer.children].forEach(b => b.disabled = false);
+}
+
+/* selecionar opção */
+function selectOption(idx){
+  if(optionLocked) return;
+  lockOptions();
+  const p = phases[currentIndex];
+  const opt = p.options[idx];
+  feedbackText.textContent = opt.f;
+  if(opt.c){
+    phaseState.solved = true;
+    phaseState.progress = 0;
+    animSuccess();
+    showResult(true, opt.f);
+  } else {
+    phaseState.failed = true;
+    animFail();
+    const correct = p.options.find(o => o.c).t;
+    showResult(false, opt.f + ' Melhor forma: "' + correct + '".');
+  }
+}
+
+/* mostrar overlay de resultado */
+function showResult(isCorrect, text){
+  resultOverlay.classList.add('visible');
+  resultTitle.textContent = isCorrect ? 'Você acertou!' : 'Você errou!';
+  resultText.textContent = text;
+  resultOverlay.style.pointerEvents = 'auto';
+  resultRetry.onclick = () => {
+    resultOverlay.classList.remove('visible');
+    resetPhaseState();
+  };
+  resultNext.onclick = () => {
+    resultOverlay.classList.remove('visible');
+    if(isCorrect && currentIndex < phases.length - 1) startPhase(currentIndex + 1);
+    else if(isCorrect) startPhase(currentIndex);
+    else resetPhaseState();
+  };
+  resultMenu.onclick = () => {
+    resultOverlay.classList.remove('visible');
+    openMenu();
+  };
+}
+
+/* reiniciar estado da fase atual (sem voltar ao menu) */
+function resetPhaseState(){
+  phaseState = createPhaseState(currentIndex);
+  unlockOptions();
+  feedbackText.textContent = 'Escolha a melhor alternativa.';
+  // ensure canvas visual reset
+  gameCanvas.classList.remove('scene-fail','scene-enter');
+}
+
+/* animação de sucesso / falha com efeitos que a cena interpreta */
+function animSuccess(){
+  // cada cena interpretará phaseState.solved e progress para animar resolução
+  phaseState.progress = 0;
+  // small visual cue: quick scale up and down
+  gameCanvas.style.transition = 'transform .18s ease';
+  gameCanvas.style.transform = 'scale(1.01)';
+  setTimeout(() => { gameCanvas.style.transform = ''; gameCanvas.style.transition = ''; }, 180);
+}
+function animFail(){
+  phaseState.shake = 10;
+  // add shake class to canvas to trigger CSS animation
+  gameCanvas.classList.remove('scene-fail');
+  void gameCanvas.offsetWidth;
+  gameCanvas.classList.add('scene-fail');
+  // ensure removal after animationend (clean)
+  const onFailEnd = () => {
+    gameCanvas.classList.remove('scene-fail');
+    gameCanvas.removeEventListener('animationend', onFailEnd);
+  };
+  gameCanvas.addEventListener('animationend', onFailEnd);
+  // fallback removal in 700ms (in case animationend doesn't fire)
+  setTimeout(() => gameCanvas.classList.remove('scene-fail'), 700);
+}
+
+/* ====== Helpers para criar personagens simples por cena ====== */
+function createWorkersForScene(scene){
+  switch(scene){
+    case 'stairs': return [
+      {x: W*0.6, y: H*0.7, vx:0, vy:0, role:'victim'},
+      {x: W*0.2, y: H*0.7, vx:0, vy:0, role:'helper'}
+    ];
+    case 'epi': return [
+      {x: W*0.65, y: H*0.68, role:'no-helmet'},
+      {x: W*0.18, y: H*0.68, role:'player'}
+    ];
+    case 'cut': return [
+      {x: W*0.45, y: H*0.66, role:'injured'},
+      {x: W*0.18, y: H*0.68, role:'player'}
+    ];
+    case 'noise': return [
+      {x: W*0.42, y: H*0.68, role:'worker'},
+      {x: W*0.76, y: H*0.6, role:'machine'}
+    ];
+    case 'respirator': return [
+      {x: W*0.5, y: H*0.66, role:'bad-mask'},
+      {x: W*0.2, y: H*0.66, role:'player'}
+    ];
+    case 'chemical': return [
+      {x: W*0.58, y: H*0.68, role:'spill'},
+      {x: W*0.2, y: H*0.68, role:'player'}
+    ];
+    case 'fire': return [
+      {x: W*0.62, y: H*0.68, role:'trash-fire'},
+      {x: W*0.22, y: H*0.68, role:'player'}
+    ];
+    case 'height': return [
+      {x: W*0.62, y: H*0.48, role:'worker-on-edge'},
+      {x: W*0.18, y: H*0.68, role:'player'}
+    ];
+    case 'tool': return [
+      {x: W*0.6, y: H*0.66, role:'broken-tool'},
+      {x: W*0.22, y: H*0.68, role:'player'}
+    ];
+    case 'dust': return [
+      {x: W*0.5, y: H*0.57, role:'dust-cloud'},
+      {x: W*0.18, y: H*0.7, role:'player'}
+    ];
+    case 'shock': return [
+      {x: W*0.5, y: H*0.68, role:'shocked'},
+      {x: W*0.72, y: H*0.55, role:'panel'}
+    ];
+    case 'gas': return [
+      {x: W*0.66, y: H*0.62, role:'gas-cloud'},
+      {x: W*0.18, y: H*0.7, role:'player'}
+    ];
+    case 'bio': return [
+      {x: W*0.5, y: H*0.68, role:'bio-spot'},
+      {x: W*0.22, y: H*0.68, role:'player'}
+    ];
+    case 'structure': return [
+      {x: W*0.6, y: H*0.52, role:'wall'},
+      {x: W*0.18, y: H*0.68, role:'player'}
+    ];
+    case 'electricFire': return [
+      {x: W*0.62, y: H*0.6, role:'electric-fire'},
+      {x: W*0.2, y: H*0.68, role:'player'}
+    ];
+    default: return [{x:W*0.5,y:H*0.7,role:'worker'}, {x:W*0.2,y:H*0.7,role:'player'}];
+  }
+}
+
+/* ====== Desenho de personagens 2D simples ====== */
+function drawWorkerSimple(x, y, opts = {}){
+  const color = opts.color || '#2563eb';
+  const helmet = opts.helmet || false;
+  const fallen = opts.fallen || false;
+  const happy = opts.happy || false;
+  const mask = opts.mask || false;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  if(fallen){
+    ctx.rotate(-Math.PI * 0.35);
+    ctx.translate(-8, 6);
+  }
+
+  // corpo
+  ctx.fillStyle = color;
+  roundRect(ctx, -12, -28, 24, 28, 6, true);
+
+  // cabeça
+  ctx.beginPath();
+  ctx.fillStyle = '#fde68a';
+  ctx.arc(0, -36, 10, 0, Math.PI*2);
+  ctx.fill();
+
+  // capacete
+  if(helmet){
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(0, -42, 11, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(-11, -42, 22, 5);
+  }
+
+  // máscara
+  if(mask){
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-9, -36, 18, 8);
+  }
+
+  // rosto
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  if(happy){
+    ctx.arc(0, -34, 4, 0, Math.PI);
+  } else {
+    ctx.arc(0, -33, 4, Math.PI, 0);
+  }
+  ctx.stroke();
+
+  // braços
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-10, -18); ctx.lineTo(-18, -8);
+  ctx.moveTo(10, -18); ctx.lineTo(18, -8);
+  ctx.stroke();
+
+  // pernas
+  ctx.beginPath();
+  ctx.moveTo(-7, -2); ctx.lineTo(-7, 12);
+  ctx.moveTo(7, -2); ctx.lineTo(7, 12);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/* utility: rounded rect */
+function roundRect(ctx,x,y,w,h,r,fill,stroke){
+  if(typeof r==='undefined') r=6;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+  if(fill){ ctx.fill(); }
+  if(stroke){ ctx.stroke(); }
+}
+
+/* ====== Funções de desenho de cada cena (detalhadas) ====== */
+function drawBaseBackground(){
+  // céu
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#dbeafe');
+  g.addColorStop(1,'#eaf2ff');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+
+  // chão
+  ctx.fillStyle = '#f1f5f9';
+  ctx.fillRect(0, H*0.62, W, H*0.38);
+
+  // prédio atrás (genérico)
+  ctx.fillStyle = '#c7d2fe';
+  ctx.fillRect(W*0.02, H*0.32, W*0.4, H*0.28);
+  ctx.fillStyle = '#bbdefb';
+  ctx.fillRect(W*0.58, H*0.36, W*0.35, H*0.26);
+}
+
+/* CENAS: cada cena lê phaseState.workers para posicionar elementos e usa phaseState.solved/failed */
+function drawSceneIndex(idx){
+  const p = phases[idx];
+  drawBaseBackground();
+
+  // título
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '18px system-ui';
+  ctx.fillText(p.title, 18, 30);
+
+  // Draw specific scene
+  switch(p.scene){
+    case 'stairs': return drawSceneStairs();
+    case 'epi': return drawSceneEpi();
+    case 'cut': return drawSceneCut();
+    case 'noise': return drawSceneNoise();
+    case 'respirator': return drawSceneRespirator();
+    case 'chemical': return drawSceneChemical();
+    case 'fire': return drawSceneFire();
+    case 'height': return drawSceneHeight();
+    case 'tool': return drawSceneTool();
+    case 'dust': return drawSceneDust();
+    case 'shock': return drawSceneShock();
+    case 'gas': return drawSceneGas();
+    case 'bio': return drawSceneBio();
+    case 'structure': return drawSceneStructure();
+    case 'electricFire': return drawSceneElectricFire();
+    default: return drawGeneric();
+  }
+}
+
+/* ----- Scene implementations (kept as in previous version) ----- */
+/* (functions drawSceneStairs, drawSceneEpi, drawSceneCut, ... remain unchanged) */
+/* For brevity they are included below exactly as before (unchanged from the version you provided). */
+
+function drawSceneStairs(){
+  const sx = W*0.52, sy = H*0.72;
+  ctx.strokeStyle = '#4b5563';
+  ctx.lineWidth = 3;
+  for(let i=0;i<6;i++){
+    ctx.beginPath();
+    ctx.moveTo(sx + i*36, sy - i*18);
+    ctx.lineTo(sx + 80 + i*36, sy - i*18);
+    ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(sx+10, sy-20); ctx.lineTo(sx+260, sy-140); ctx.stroke();
+  const victim = phaseState.workers[0];
+  const wob = phaseState.shake ? Math.sin(t*60)*3 : 0;
+  drawWorkerSimple(victim.x + wob, victim.y + 8, {color:'#ef4444', fallen:true, helmet:false, happy:false});
+  const player = phaseState.workers[1];
+  if(phaseState.solved){
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', helmet:true, happy:true});
+    drawWorkerSimple(victim.x+40, victim.y-20, {color:'#22c55e', helmet:true, happy:true});
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(victim.x+30, victim.y-30, 16, 6);
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb', helmet:true, happy:false});
+  }
+  ctx.fillStyle = '#ef4444';
+  roundRect(ctx, W*0.12, H*0.66, 40, 30, 6, true);
+  ctx.fillStyle = '#fff'; ctx.fillRect(W*0.12+14, H*0.66+6, 12, 4);
+}
+
+function drawSceneEpi(){
+  ctx.fillStyle = '#e6eefc';
+  roundRect(ctx, W*0.55, H*0.52, 240, 110, 8, true);
+  ctx.fillStyle = '#facc15'; roundRect(ctx, W*0.58, H*0.56, 48, 22, 6, true);
+  ctx.fillStyle = '#22c55e'; roundRect(ctx, W*0.65, H*0.56, 48, 22, 6, true);
+  ctx.fillStyle = '#60a5fa'; roundRect(ctx, W*0.72, H*0.56, 48, 22, 6, true);
+  const noHelmet = phaseState.workers[0];
+  if(phaseState.solved){
+    phaseState.progress = Math.min(1, phaseState.progress + 0.01);
+    const pickX = lerp(noHelmet.x, W*0.58, phaseState.progress);
+    drawWorkerSimple(pickX, noHelmet.y, {color:'#22c55e', helmet:true, happy:true});
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', helmet:true, happy:true});
+    if(phaseState.progress > 0.6){
+      ctx.fillStyle = 'rgba(34,197,94,0.12)'; ctx.beginPath(); ctx.arc(W*0.58, H*0.54, 36*phaseState.progress, 0, Math.PI*2); ctx.fill();
+    }
+  } else {
+    drawWorkerSimple(noHelmet.x, noHelmet.y, {color:'#f97316', helmet:false, happy:false});
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb', helmet:true, happy:false});
+  }
+}
+
+function drawSceneCut(){
+  roundRect(ctx, W*0.15, H*0.62, W*0.7, 18, 6, true);
+  const injured = phaseState.workers[0];
+  if(phaseState.solved){
+    phaseState.progress = Math.min(1, phaseState.progress + 0.02);
+    drawWorkerSimple(injured.x, injured.y - 8, {color:'#22c55e', helmet:true, happy:true});
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(injured.x+8, injured.y-26, 18*phaseState.progress, 6);
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+  } else {
+    drawWorkerSimple(injured.x, injured.y, {color:'#ef4444', helmet:false, happy:false});
+    ctx.fillStyle = '#b91c1c';
+    ctx.beginPath(); ctx.arc(injured.x+12, injured.y-22, 8, 0, Math.PI*2); ctx.fill();
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb', happy:false});
+  }
+}
+
+function drawSceneNoise(){
+  roundRect(ctx, W*0.55, H*0.56, 180, 90, 8, true);
+  const mx = W*0.62, my = H*0.52;
+  const amp = phaseState.solved ? 6 : 14;
+  ctx.strokeStyle = '#f97316';
+  ctx.lineWidth = 3;
+  for(let i=0;i<3;i++){
+    ctx.beginPath();
+    ctx.arc(mx, my, amp + i*14 - (t%1)*4, -0.8, 0.8);
+    ctx.stroke();
+  }
+  if(phaseState.solved){
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+    ctx.fillStyle = 'rgba(34,197,94,0.08)'; ctx.fillRect(W*0.5, H*0.6, 40, 30);
+  } else {
+    drawWorkerSimple(W*0.45, H*0.68, {color:'#f97316'});
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneRespirator(){
+  ctx.fillStyle = 'rgba(148,163,184,0.5)';
+  ctx.beginPath(); ctx.arc(W*0.68, H*0.56, 48, 0, Math.PI*2); ctx.fill();
+  if(phaseState.solved){
+    phaseState.progress = Math.min(1, phaseState.progress + 0.02);
+    drawWorkerSimple(W*0.45, H*0.66, {color:'#22c55e', mask:true, happy:true});
+    ctx.fillStyle = '#dbeafe';
+    ctx.fillRect(W*0.45+20, H*0.66-38, 10*phaseState.progress, 6);
+  } else {
+    drawWorkerSimple(W*0.45, H*0.66, {color:'#f97316', mask:true, happy:false});
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneChemical(){
+  ctx.fillStyle = '#bbf7d0';
+  ctx.beginPath(); ctx.ellipse(W*0.62, H*0.7, 80, 26, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f97316'; roundRect(ctx, W*0.58, H*0.6-16, 20, 40, 6, true);
+  if(phaseState.solved){
+    for(let i=0;i<4;i++){
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.moveTo(W*0.5 + i*36, H*0.68);
+      ctx.lineTo(W*0.52 + i*36, H*0.62);
+      ctx.lineTo(W*0.54 + i*36, H*0.68);
+      ctx.fill();
+    }
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb', happy:false});
+  }
+}
+
+function drawSceneFire(){
+  roundRect(ctx, W*0.6, H*0.6-40, 44, 60, 6, true);
+  const fx = W*0.62, fy = H*0.6-10;
+  const fireH = 18 + Math.sin(t*8)*8;
+  ctx.fillStyle = '#f97316';
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.quadraticCurveTo(fx+8, fy - fireH, fx+18, fy);
+  ctx.quadraticCurveTo(fx+8, fy - (fireH*0.6), fx, fy);
+  ctx.fill();
+  if(phaseState.solved){
+    phaseState.progress = Math.min(1, phaseState.progress + 0.03);
+    ctx.fillStyle = `rgba(148,163,184,${1-phaseState.progress})`;
+    ctx.fillRect(fx-20, fy-40, 80, 60);
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneHeight(){
+  roundRect(ctx, W*0.55, H*0.48, 160, 12, 4, true);
+  if(phaseState.solved){
+    ctx.strokeStyle = '#16a34a';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(W*0.55, H*0.48);
+    ctx.lineTo(W*0.72, H*0.36);
+    ctx.stroke();
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+  } else {
+    drawWorkerSimple(W*0.62, H*0.45, {color:'#ef4444'});
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneTool(){
+  roundRect(ctx, W*0.2, H*0.6, W*0.6, 18, 6, true);
+  ctx.fillStyle = phaseState.solved ? '#22c55e' : '#ef4444';
+  roundRect(ctx, W*0.6, H*0.58, 50, 12, 4, true);
+  if(phaseState.solved){
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#22c55e', happy:true});
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneDust(){
+  for(let i=0;i<40;i++){
+    const x = W*0.45 + Math.cos(t*2 + i)*80 * (i%5/5);
+    const y = H*0.48 + (i%10)*8;
+    ctx.fillStyle = 'rgba(148,163,184,0.45)';
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+  }
+  if(phaseState.solved){
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+    ctx.fillStyle = 'rgba(34,197,94,0.08)'; ctx.fillRect(W*0.68, H*0.45, 60, 40);
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneShock(){
+  roundRect(ctx, W*0.64, H*0.46, 80, 110, 6, true);
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(W*0.69, H*0.5, 8, 20);
+  if(!phaseState.solved){
+    ctx.strokeStyle = '#f97316';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(W*0.58, H*0.64); ctx.lineTo(W*0.6, H*0.6); ctx.lineTo(W*0.62, H*0.66); ctx.stroke();
+    drawFallenWorkerVisual(W*0.5, H*0.7);
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  } else {
+    ctx.fillStyle = '#94a3b8';
+    roundRect(ctx, W*0.64, H*0.46, 80, 110, 6, true);
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+  }
+}
+
+function drawFallenWorkerVisual(x,y){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(-Math.PI*0.6);
+  drawWorkerSimple(0,0,{color:'#ef4444', fallen:true});
+  ctx.restore();
+}
+
+function drawSceneGas(){
+  const gx = W*0.66, gy = H*0.6;
+  const a = 0.6 - (phaseState.solved? phaseState.progress * 0.5 : 0);
+  ctx.fillStyle = `rgba(148,163,184,${Math.max(0.12,a)})`;
+  ctx.beginPath(); ctx.arc(gx, gy, 58 - (phaseState.solved? 20*phaseState.progress:0), 0, Math.PI*2); ctx.fill();
+  if(phaseState.solved){
+    phaseState.progress = Math.min(1, phaseState.progress + 0.02);
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneBio(){
+  ctx.fillStyle = '#b91c1c';
+  ctx.beginPath(); ctx.ellipse(W*0.5, H*0.68, 26, 12, 0, 0, Math.PI*2); ctx.fill();
+  if(phaseState.solved){
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(W*0.7, H*0.6, 26, 18);
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneStructure(){
+  ctx.fillStyle = '#cbd5f5';
+  roundRect(ctx, W*0.54, H*0.38, 180, 170, 8, true);
+  ctx.strokeStyle = '#475569';
+  ctx.beginPath();
+  ctx.moveTo(W*0.6, H*0.42);
+  ctx.lineTo(W*0.66, H*0.52);
+  ctx.lineTo(W*0.62, H*0.62);
+  ctx.stroke();
+  if(phaseState.solved){
+    phaseState.progress = Math.min(1, phaseState.progress + 0.018);
+    ctx.strokeStyle = '#f97316';
+    ctx.setLineDash([8,6]);
+    ctx.strokeRect(W*0.52, H*0.36, 200, 190);
+    ctx.setLineDash([]);
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawSceneElectricFire(){
+  roundRect(ctx, W*0.6, H*0.54, 90, 70, 8, true);
+  ctx.fillStyle = '#f97316';
+  ctx.beginPath();
+  ctx.moveTo(W*0.62, H*0.56);
+  ctx.quadraticCurveTo(W*0.66, H*0.48, W*0.7, H*0.56);
+  ctx.fill();
+  if(phaseState.solved){
+    phaseState.progress = Math.min(1, phaseState.progress + 0.02);
+    ctx.fillStyle = '#ef4444';
+    roundRect(ctx, W*0.5, H*0.56, 26, 44, 6, true);
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#16a34a', happy:true});
+  } else {
+    drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+  }
+}
+
+function drawGeneric(){
+  drawWorkerSimple(playerVisualX(), playerVisualY(), {color:'#2563eb'});
+}
+
+/* ====== util: player visual position (consistent) ====== */
+function playerVisualX(){ return W*0.18; }
+function playerVisualY(){ return H*0.7; }
+
+/* simple linear interpolation */
+function lerp(a,b,t){ return a + (b-a)*t; }
+
+/* ====== Loop de animação principal ====== */
+function loop(){
+  t += 0.016;
+  ctx.clearRect(0,0,W,H);
+  drawSceneIndex(currentIndex);
+  if(phaseState.shake){
+    phaseState.shake *= 0.92;
+    if(phaseState.shake < 0.05) phaseState.shake = 0;
+  }
+  animId = requestAnimationFrame(loop);
+}
+
+/* ====== Inicialização: aplicar primeira fase no menu e listeners ====== */
+function init(){
+  updateMissionDetail(0);
+  const items = missionListEl.querySelectorAll('.missionItem');
+  if(items[0]) items[0].classList.add('selected');
+}
+init();
+
+/* ====== Resultado / Reset handlers ====== */
+resetBtn.addEventListener('click', resetPhaseState);
+
+resultRetry.addEventListener('click', () => {
+  resultOverlay.classList.remove('visible');
+  resetPhaseState();
+});
+resultNext.addEventListener('click', () => {
+  resultOverlay.classList.remove('visible');
+  if(currentIndex < phases.length - 1) startPhase(currentIndex+1);
+});
+resultMenu.addEventListener('click', () => {
+  resultOverlay.classList.remove('visible');
+  openMenu();
+});
+
+/* Start with menu open */
+openMenu();
+
+</script>
+</body>
+</html>
